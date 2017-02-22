@@ -1,76 +1,78 @@
 import numpy as np
 from numpy import zeros, ones, absolute, around
 
-def _pixels_in_range(p1,p2):
+
+def _pixels_in_range(p1, p2):
     # Helper function to create a list of pixels
     if p2 > p1:
-        ps = np.arange(p1,p2+1)
+        ps = np.arange(p1, p2 + 1)
     else:
-        ps = np.arange(p1,p2-1,-1)
+        ps = np.arange(p1, p2 - 1, -1)
 
     return ps
 
-def accumLines(x1,x2,img_size):
-# ACCUMLINES accumulate lines in an image of size img_size given their end
-# points x1, x2.
-#
-# In addition to just accumulating the lines, we also weight the lines
-# using their slope. Horizontal lines get a weight of zero. Lines with a
-# larger dx than dy get weighted by (dy/dx).
-#
-# x1 : n x 2 array, [y1, x1; ... ; yn, xn], of line start points
-# x2 : n x 2 array, [y1, x1; ... ; yn, xn], of line end points
-# img_size : 1x2 array with the size of the image
-# conn : line connectivity --- only use 4 in this function
 
-# Trace a line through a 2d grid and find each pixel the line intersects
-# http://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
-# http://stackoverflow.com/questions/32328179/opencv-3-0-python-lineiterator
+def accumLines(x1, x2, img_size):
+    # ACCUMLINES accumulate lines in an image of size img_size given their end
+    # points x1, x2.
+    #
+    # In addition to just accumulating the lines, we also weight the lines
+    # using their slope. Horizontal lines get a weight of zero. Lines with a
+    # larger dx than dy get weighted by (dy/dx).
+    #
+    # x1 : n x 2 array, [y1, x1; ... ; yn, xn], of line start points
+    # x2 : n x 2 array, [y1, x1; ... ; yn, xn], of line end points
+    # img_size : 1x2 array with the size of the image
+    # conn : line connectivity --- only use 4 in this function
+
+    # Trace a line through a 2d grid and find each pixel the line intersects
+    # http://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
+    # http://stackoverflow.com/questions/32328179/opencv-3-0-python-lineiterator
 
     # If x1 is 1-d, then make sure it is treated as a column vector
     if np.ndim(x1) == 1:
-        x1.shape = (1,2)
-        x2.shape = (1,2)
+        x1.shape = (1, 2)
+        x2.shape = (1, 2)
 
     # Number of lines to accumulate
     N = x1.shape[0]
     A = zeros(img_size)
 
     # Get the differences for each line
-    dy = x1[:,0] - x2[:,0]
-    dx = x1[:,1] - x2[:,1]
+    dy = x1[:, 0] - x2[:, 0]
+    dx = x1[:, 1] - x2[:, 1]
 
     # Create an array of just the y and x values
-    y = np.column_stack( (x1[:,0], x2[:,0]) )
-    x = np.column_stack( (x1[:,1], x2[:,1]) )
+    y = np.column_stack((x1[:, 0], x2[:, 0]))
+    x = np.column_stack((x1[:, 1], x2[:, 1]))
 
     for pt in range(N):
 
-        if dy[pt] == 0: # horizontal line
+        if dy[pt] == 0:  # horizontal line
 
             # Create the pixels of the line
-            xs = _pixels_in_range(x[pt,1],x[pt,0])
-            ys = y[pt,0]*ones(xs.size)
+            xs = _pixels_in_range(x[pt, 1], x[pt, 0])
+            ys = y[pt, 0] * ones(xs.size)
 
             # Create the weights for the line
             w = zeros(xs.size)
 
-        elif dx[pt] == 0: # vertical line
+        elif dx[pt] == 0:  # vertical line
 
             # Create the pixels of the line
-            ys = _pixels_in_range(y[pt,1],y[pt,0])
-            xs = x[pt,0]*ones(ys.size)
+            ys = _pixels_in_range(y[pt, 1], y[pt, 0])
+            xs = x[pt, 0] * ones(ys.size)
 
             # Create the weights for the line
             w = ones(ys.size)
 
-        else: # general line
+        else:  # general line
             if absolute(dy[pt]) > absolute(dx[pt]):
                 slope = dx[pt] / dy[pt]
 
                 # Create the pixels of the line
-                ys = _pixels_in_range(y[pt,1],y[pt,0])
-                xs = around(slope * (ys - y[pt,0])) + x[pt,0]
+                ys = _pixels_in_range(y[pt, 1], y[pt, 0])
+                xs = around(slope * (ys - y[pt, 0])) + x[pt, 0]
 
                 # Create the weights for the line
                 w = ones(ys.size)
@@ -78,14 +80,14 @@ def accumLines(x1,x2,img_size):
                 slope = dy[pt] / dx[pt]
 
                 # Create the pixels of the line
-                xs = _pixels_in_range(x[pt,1],x[pt,0])
-                ys = around(slope * (xs - x[pt,0])) + y[pt,0]
+                xs = _pixels_in_range(x[pt, 1], x[pt, 0])
+                ys = around(slope * (xs - x[pt, 0])) + y[pt, 0]
 
                 # Create the weights for the line
                 w = absolute(slope) * ones(ys.size)
 
         # Incriment our matrix
-        A[ys.astype(np.int_),xs.astype(np.int_)] += w
+        A[ys.astype(np.int_), xs.astype(np.int_)] += w
 
     return A
 
